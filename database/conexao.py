@@ -1,4 +1,3 @@
-# database/conexao.py
 import mysql.connector
 from mysql.connector import Error
 
@@ -13,7 +12,7 @@ def conectar():
     """Cria conexão com banco e retorna (conn, cursor)."""
     try:
         conn = mysql.connector.connect(**CONFIG)
-        cur = conn.cursor()
+        cur = conn.cursor(buffered=True)  # ← CORREÇÃO IMPORTANTE
         return conn, cur
     except Error as e:
         print("Erro ao conectar ao MySQL:", e)
@@ -21,7 +20,6 @@ def conectar():
 
 
 def fetchone(query, params=None):
-    """Executa SELECT que retorna apenas 1 linha."""
     conn, cur = conectar()
     if not conn:
         return None
@@ -33,7 +31,6 @@ def fetchone(query, params=None):
 
 
 def fetchall(query, params=None):
-    """Executa SELECT retornando várias linhas."""
     conn, cur = conectar()
     if not conn:
         return None
@@ -45,7 +42,6 @@ def fetchall(query, params=None):
 
 
 def exec_commit(query, params=None):
-    """Executa INSERT / UPDATE / DELETE."""
     conn, cur = conectar()
     if not conn:
         return False, "Falha na conexão"

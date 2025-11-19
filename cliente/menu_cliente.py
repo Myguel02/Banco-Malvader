@@ -1,73 +1,202 @@
 import customtkinter as ctk
-from cliente.deposito import TelaDeposito
-from cliente.saque import TelaSaque
-from cliente.transferencia import TelaTransferencia
-from cliente.extrato import TelaExtrato
-from cliente.perfil import TelaPerfil
-from cliente.endereco import TelaEndereco
-from cliente.investimento import TelaInvestimento
+from database.conexao import fetchone, fetchall, exec_commit
+from utils.helpers import format_currency
 
 
-class MenuCliente(ctk.CTk):
+def abrir_app_cliente(id_cliente):
+    app = ctk.CTk()
+    app.title("Banco Malvader - Área do Cliente")
+    app.geometry("520x460")
 
-    def __init__(self, id_cliente, nome_cliente):
-        super().__init__()
+    ctk.CTkLabel(app, text="Área do Cliente", font=("Arial", 22)).pack(pady=10)
 
-        self.id_cliente = id_cliente
-        self.nome_cliente = nome_cliente
+    # Popup
+    def popup(titulo, msg):
+        p = ctk.CTkToplevel(app)
+        p.title(titulo)
+        p.geometry("380x240")
+        ctk.CTkLabel(p, text=msg, font=("Arial", 15)).pack(pady=25)
+        ctk.CTkButton(p, text="OK", command=p.destroy).pack(pady=10)
 
-        self.title("Banco Malvader - Área do Cliente")
-        self.geometry("600x500")
+    def get_id_conta():
+        r = fetchone("SELECT id_conta FROM conta WHERE id_cliente=%s", (id_cliente,))
+        return r[0] if r else None
 
-        ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("dark-blue")
+    # SALDO
+    def consultar_saldo():
+        r = fetchone("""
+            SELECT saldo, tipo_conta, status 
+            FROM conta 
+            WHERE id_cliente=%s
+        """, (id_cliente,))
+        
+        if r:
+            saldo, tipo, status = r
+            msg = f"Conta: {tipo}\nStatus: {status}\nSaldo Atual: {format_currency(saldo)}"
+        else:
+            msg = "Nenhuma conta encontrada!"
 
-        # Cabeçalho
-        titulo = ctk.CTkLabel(self, text=f"Bem-vindo, {self.nome_cliente}", font=("Arial", 20))
-        titulo.pack(pady=20)
+        popup("Saldo", msg)
 
-        # Frame de botões
-        frame = ctk.CTkFrame(self)
-        frame.pack(pady=20, fill="both", expand=True)
+    # DEPÓSITO
+    def deposito():
+        win = ctk.CTkToplevel(app)
+        win.title("Depósito")
+        win.geometry("300x220")
 
-        # ---- Botões ----
-        botoes = [
-            ("Depósito", self.abrir_deposito),
-            ("Saque", self.abrir_saque),
-            ("Transferência", self.abrir_transferencia),
-            ("Extrato", self.abrir_extrato),
-            ("Perfil", self.abrir_perfil),
-            ("Endereço", self.abrir_endereco),
-            ("Simulador de Investimentos", self.abrir_investimento),
-            ("Sair", self.sair)
-        ]
+        ctk.CTkLabel(win, text="Valor do depósito:").pack(pady=10)
+        entry_valor = ctk.CTkEntry(win)
+        entry_valor.pack(pady=5)
 
-        for texto, comando in botoes:
-            btn = ctk.CTkButton(frame, text=texto, width=200, command=comando)
-            btn.pack(pady=10)
+        def confirmar():
+            try:
+                valor = float(entry_valor.get())
+                if valor <= 0:
+                    raise ValueError()
 
-    # -------- Telas do Cliente -------- #
+                id_conta = get_id_conta()
 
-    def abrir_deposito(self):
-        TelaDeposito(self.id_cliente)
+                ok, erro = exec_commit("""
+                    INSERT INTO transacao (id_conta_destino, tipo_transacao, valor, descricao)
+                    VALUES (%s, 'DEPOSITO', %s, 'DEPÓSITO APP')
+                """, (id_conta, valor))
 
-    def abrir_saque(self):
-        TelaSaque(self.id_cliente)
+                if ok:
+                    popup("Depósito", "Depósito realizado!")
+                    win.destroy()
+                else:
+                    popup("Erro", erro)
+            except:
+                popup("Erro", "Valor inválido!")
 
-    def abrir_transferencia(self):
-        TelaTransferencia(self.id_cliente)
+        ctk.CTkButton(win, text="Confirmar", command=confirmar).pack(pady=10)
 
-    def abrir_extrato(self):
-        TelaExtrato(self.id_cliente)
+    # SAQUE
+    def saque():
+        win = ctk.CTkToplevel(app)
+        win.title("Saque")
+        win.geometry("300x220")
 
-    def abrir_perfil(self):
-        TelaPerfil(self.id_cliente)
+        ctk.CTkLabel(win, text="Valor do saque:").pack(pady=10)
+        entry_valor = ctk.CTkEntry(win)
+        entry_valor.pack(pady=5)
 
-    def abrir_endereco(self):
-        TelaEndereco(self.id_cliente)
+        def confirmar():
+            try:
+                valor = float(entry_valor.get())
+                if valor <= 0:
+                    raise ValueError()
 
-    def abrir_investimento(self):
-        TelaInvestimento(self.id_cliente)
+                id_conta = get_id_conta()
 
-    def sair(self):
-        self.destroy()
+                ok, erro = exec_commit("""
+                    INSERT INTO transacao (id_conta_origem, tipo_transacao, valor, descricao)
+                    VALUES (%s, 'SAQUE', %s, 'SAQUE APP')
+                """, (id_conta, valor))
+
+                if ok:
+                    popup("Saque", "Saque realizado!")
+                    win.destroy()
+                else:
+                    popup("Erro", erro)
+            except:
+                popup("Erro", "Valor inválido!")
+
+        ctk.CTkButton(win, text="Confirmar", command=confirmar).pack(pady=10)
+
+    # TRANSFERÊNCIA
+    def transferencia():
+        win = ctk.CTkToplevel(app)
+        win.title("Transferência")
+        win.geometry("320x270")
+
+        ctk.CTkLabel(win, text="Conta destino:").pack(pady=5)
+        entry_dest = ctk.CTkEntry(win)
+        entry_dest.pack(pady=5)
+
+        ctk.CTkLabel(win, text="Valor:").pack(pady=5)
+        entry_valor = ctk.CTkEntry(win)
+        entry_valor.pack(pady=5)
+
+        def confirmar():
+            try:
+                dest = entry_dest.get().strip()
+                valor = float(entry_valor.get())
+
+                if valor <= 0:
+                    raise ValueError()
+
+                id_origem = get_id_conta()
+
+                r = fetchone("SELECT id_conta FROM conta WHERE numero_conta=%s", (dest,))
+                if not r:
+                    popup("Erro", "Conta destino não encontrada!")
+                    return
+
+                id_dest = r[0]
+
+                ok, erro = exec_commit("""
+                    INSERT INTO transacao (id_conta_origem, id_conta_destino, tipo_transacao, valor, descricao)
+                    VALUES (%s, %s, 'TRANSFERENCIA', %s, 'TRANSFER APP')
+                """, (id_origem, id_dest, valor))
+
+                if ok:
+                    popup("Transferência", "Transferência realizada!")
+                    win.destroy()
+                else:
+                    popup("Erro", erro)
+
+            except:
+                popup("Erro", "Entrada inválida!")
+
+        ctk.CTkButton(win, text="Confirmar", command=confirmar).pack(pady=10)
+
+    # EXTRATO
+    def extrato():
+        id_conta = get_id_conta()
+
+        r = fetchall("""
+            SELECT tipo_transacao, valor, data_hora
+            FROM transacao
+            WHERE id_conta_origem=%s OR id_conta_destino=%s
+            ORDER BY data_hora DESC
+            LIMIT 10
+        """, (id_conta, id_conta))
+
+        if not r:
+            popup("Extrato", "Nenhuma transação encontrada!")
+            return
+
+        texto = "\n".join([f"{t[0]} | {format_currency(t[1])} | {t[2]}" for t in r])
+
+        popup("Extrato (Últimas 10)", texto)
+
+    # LIMITE
+    def consultar_limite():
+        r = fetchone("""
+            SELECT cc.limite 
+            FROM conta_corrente cc
+            JOIN conta c ON cc.id_conta = c.id_conta
+            WHERE c.id_cliente=%s
+        """, (id_cliente,))
+
+        if r:
+            limite = r[0]
+            popup("Limite", f"Limite disponível: {format_currency(limite)}")
+        else:
+            popup("Limite", "Conta não é corrente ou não possui limite.")
+
+    # BOTÕES
+    frame = ctk.CTkFrame(app)
+    frame.pack(pady=15)
+
+    ctk.CTkButton(frame, text="Consultar Saldo", width=220, command=consultar_saldo).grid(row=0, column=0, pady=6)
+    ctk.CTkButton(frame, text="Depósito", width=220, command=deposito).grid(row=1, column=0, pady=6)
+    ctk.CTkButton(frame, text="Saque", width=220, command=saque).grid(row=2, column=0, pady=6)
+    ctk.CTkButton(frame, text="Transferência", width=220, command=transferencia).grid(row=3, column=0, pady=6)
+    ctk.CTkButton(frame, text="Extrato", width=220, command=extrato).grid(row=4, column=0, pady=6)
+    ctk.CTkButton(frame, text="Consultar Limite", width=220, command=consultar_limite).grid(row=5, column=0, pady=6)
+
+    ctk.CTkButton(app, text="Sair", fg_color="red", command=app.destroy).pack(pady=10)
+
+    app.mainloop()

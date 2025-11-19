@@ -1,7 +1,6 @@
 import customtkinter as ctk
-from database.conexao import conectar, fetchone, fetchall, exec_commit
+from database.conexao import fetchone
 from utils.helpers import md5_hash
-
 
 
 def criar_tela_login():
@@ -10,15 +9,23 @@ def criar_tela_login():
     app.geometry("420x360")
 
     ctk.CTkLabel(app, text="Login", font=("Arial", 20)).pack(pady=10)
-    ctk.CTkLabel(app, text="CPF").pack(pady=(6,0))
+
+    # CPF
+    ctk.CTkLabel(app, text="CPF").pack(pady=(6, 0))
     entry_cpf = ctk.CTkEntry(app, placeholder_text="Digite seu CPF")
     entry_cpf.pack(pady=6)
-    ctk.CTkLabel(app, text="Senha").pack(pady=(6,0))
+
+    # SENHA
+    ctk.CTkLabel(app, text="Senha").pack(pady=(6, 0))
     entry_senha = ctk.CTkEntry(app, placeholder_text="Digite sua senha", show="*")
     entry_senha.pack(pady=6)
+
     lbl_res = ctk.CTkLabel(app, text="")
     lbl_res.pack(pady=6)
 
+    # -----------------------------
+    # Função validar login
+    # -----------------------------
     def validar_login():
         cpf = entry_cpf.get().strip()
         senha = entry_senha.get().strip()
@@ -29,39 +36,51 @@ def criar_tela_login():
 
         hash_senha = md5_hash(senha)
 
+        # Buscar usuário
         r = fetchone(
             "SELECT id_usuario, senha_hash, tipo_usuario FROM usuario WHERE cpf = %s",
             (cpf,)
         )
+
         if not r:
             lbl_res.configure(text="CPF ou senha incorretos.", text_color="red")
             return
 
         id_usuario, senha_db, tipo = r
 
+        # Verificar senha
         if hash_senha != senha_db:
             lbl_res.configure(text="CPF ou senha incorretos.", text_color="red")
             return
 
-        app.destroy()  # fecha tela de login
+        lbl_res.configure(text="Login realizado!", text_color="green")
+        app.destroy()  # fecha a tela de login
 
-        try:
-            if tipo == 'CLIENTE':
+        # -----------------------------------------
+        # ÁREA DO CLIENTE
+        # -----------------------------------------
+        if tipo == "CLIENTE":
+            r2 = fetchone(
+                "SELECT id_cliente FROM cliente WHERE id_usuario = %s",
+                (id_usuario,)
+            )
+
+            if r2:
                 from cliente.menu_cliente import abrir_app_cliente
-                r2 = fetchone("SELECT id_cliente FROM cliente WHERE id_usuario = %s", (id_usuario,))
-                if r2:
-                    abrir_app_cliente(r2[0])
-                else:
-                    print("Cliente não encontrado.")
+                abrir_app_cliente(r2[0])
+            else:
+                print("Cliente não encontrado no banco.")
 
-            elif tipo == 'FUNCIONARIO':
-                print("Área do funcionário ainda não implementada.")
-                return
+        # -----------------------------------------
+        # ÁREA DO FUNCIONÁRIO
+        # -----------------------------------------
+        elif tipo == "FUNCIONARIO":
+            from funcionario.Menu import abrir_app_funcionario
+            abrir_app_funcionario(id_usuario)
 
-        except Exception as e:
-            print("Erro ao abrir área do usuário:", e)
-
+    # Botão LOGIN
     ctk.CTkButton(app, text="Login", command=validar_login).pack(pady=12)
+
     app.mainloop()
 
 
