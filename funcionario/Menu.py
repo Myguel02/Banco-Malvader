@@ -1,6 +1,19 @@
+import importlib
 import customtkinter as ctk
 from database.conexao import fetchone, exec_commit
 
+def _safe_import(module_path: str, attr_name: str):
+    """
+    Tenta importar attr_name de module_path.
+    Retorna a função/objeto ou None e a mensagem de erro.
+    """
+    try:
+        mod = importlib.import_module(module_path)
+        if not hasattr(mod, attr_name):
+            return None, f"O módulo '{module_path}' foi encontrado, mas não contém '{attr_name}'."
+        return getattr(mod, attr_name), None
+    except Exception as e:
+        return None, f"Falha ao importar '{module_path}': {e}"
 
 def abrir_app_funcionario(id_usuario):
     # -----------------------------------------------
@@ -31,42 +44,54 @@ def abrir_app_funcionario(id_usuario):
     ctk.CTkLabel(app, text=f"Bem-vindo, {cargo}", font=("Arial", 22)).pack(pady=10)
 
     # -----------------------------------------------
-    # Funções chamando telas separadas
+    # Funções chamando telas separadas (robustas)
     # -----------------------------------------------
     def abrir_abrir_conta():
-        from funcionario.telas.abrirconta import tela_abrir_conta
-        tela_abrir_conta(id_funcionario)
+        fn, err = _safe_import("funcionario.telas.abrirconta", "tela_abrir_conta")
+        if err:
+            popup("Erro", err); return
+        fn(id_funcionario)
 
     def abrir_encerrar_conta():
-        from funcionario.telas.encerramentoconta import tela_encerrar_conta
-        tela_encerrar_conta(id_funcionario)
+        fn, err = _safe_import("funcionario.telas.encerramentoconta", "tela_encerrar_conta")
+        if err:
+            popup("Erro", err); return
+        fn(id_funcionario)
 
     def abrir_consulta():
-        from funcionario.telas.consulta import tela_consulta
-        tela_consulta()
+        fn, err = _safe_import("funcionario.telas.consulta", "tela_consulta")
+        if err:
+            popup("Erro", err); return
+        fn()
 
     def abrir_editar():
-        from funcionario.telas.editardados import tela_editar
-        tela_editar()
+        fn, err = _safe_import("funcionario.telas.editardados", "tela_editar_dados")
+        if err:
+            popup("Erro", err); return
+        fn()
 
     def abrir_cadastro_func():
         if cargo != "GERENTE":
             popup("Acesso negado", "Somente GERENTE pode cadastrar funcionários.")
             return
 
-        from funcionario.telas.cadastro import tela_cadastrar_func
-        tela_cadastrar_func(id_funcionario)
+        fn, err = _safe_import("funcionario.telas.cadastro", "tela_cadastrar_func")
+        if err:
+            popup("Erro", err); return
+        fn(id_funcionario)
 
     def abrir_relatorios():
-        from funcionario.telas.relatorio import tela_relatorios
-        tela_relatorios(id_funcionario)
+        fn, err = _safe_import("funcionario.telas.relatorio", "tela_relatorios")
+        if err:
+            popup("Erro", err); return
+        fn(id_funcionario)
 
-    def popup(titulo, msg):
+    def popup(titulo, mensagem):
         p = ctk.CTkToplevel(app)
         p.title(titulo)
-        p.geometry("350x200")
-        ctk.CTkLabel(p, text=msg, font=("Arial", 16)).pack(pady=20)
-        ctk.CTkButton(p, text="OK", command=p.destroy).pack(pady=10)
+        p.geometry("360x180")
+        ctk.CTkLabel(p, text=mensagem, font=("Arial", 14), wraplength=320).pack(pady=16)
+        ctk.CTkButton(p, text="OK", command=p.destroy).pack(pady=6)
 
     # -----------------------------------------------
     # BOTOES DO MENU
