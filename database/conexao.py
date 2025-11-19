@@ -1,12 +1,15 @@
 import mysql.connector
 from mysql.connector import Error
 
+import os
+
 CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'M@cieira22',
-    'database': 'banco_malvader'
+    'host': os.getenv("DB_HOST", "localhost"),
+    'user': os.getenv("DB_USER", "root"),
+    'password': os.getenv("DB_PASSWORD", "M@cieira22"),
+    'database': os.getenv("DB_NAME", "banco_malvader")
 }
+
 
 def conectar():
     """Cria conexão com banco e retorna (conn, cursor)."""

@@ -52,6 +52,9 @@ endereco_id INT NOT NULL,
 CONSTRAINT fk_agencia_endereco FOREIGN KEY (endereco_id) REFERENCES endereco_agencia(id_endereco_agencia)
 );
 
+INSERT INTO agencia (id_agencia, nome, endereco)
+VALUES (145, 'Agência Central', 'Rua das Flores, 123');
+
 -- Funcionário, agora vinculado à agência e com hierarquia opcional
 CREATE TABLE funcionario (
 id_funcionario INT PRIMARY KEY AUTO_INCREMENT,
@@ -87,6 +90,10 @@ CONSTRAINT fk_conta_agencia FOREIGN KEY (id_agencia) REFERENCES agencia(id_agenc
 CONSTRAINT fk_conta_cliente FOREIGN KEY (id_cliente) REFERENCES cliente(id_cliente),
 INDEX idx_conta_numero (numero_conta)
 );
+INSERT INTO conta (numero_conta, id_agencia, saldo, tipo_conta, id_cliente, data_abertura)
+VALUES ('10', 1, 500.00, 'POUPANCA', 14, '2025-05-22 15:00:00');
+
+select * from agencia;
 
 CREATE TABLE conta_poupanca (
 id_conta_poupanca INT PRIMARY KEY AUTO_INCREMENT,
@@ -95,6 +102,8 @@ taxa_rendimento DECIMAL(5,2) NOT NULL,
 ultimo_rendimento DATETIME NULL,
 CONSTRAINT fk_cp_conta FOREIGN KEY (id_conta) REFERENCES conta(id_conta)
 );
+
+
 
 CREATE TABLE conta_corrente (
 id_conta_corrente INT PRIMARY KEY AUTO_INCREMENT,
@@ -495,6 +504,8 @@ VALUES (@id_usuario_func, 1, 'FUNC001', 'GERENTE');
 INSERT INTO transacao (id_conta_destino, tipo_transacao, valor, descricao)
 VALUES (1, 'DEPOSITO', 300.00, 'Depósito inicial');
 
+insert into transacao  values(14,"DEPOSITO", 500.00, 'Depósito inicial');
+
 INSERT INTO transacao (id_conta_destino, tipo_transacao, valor, descricao)
 VALUES (1, 'DEPOSITO', 250.00, 'Pix recebido');
 
@@ -533,6 +544,91 @@ SELECT * FROM usuario WHERE tipo_usuario = 'FUNCIONARIO';
 
 SELECT * FROM funcionario WHERE id_usuario = 2;
 
+-- Criar vários clientes
+INSERT INTO usuario (nome, cpf, data_nascimento, telefone, tipo_usuario, senha_hash)
+VALUES 
+('Carlos Silva',       '12312312399', '1985-03-22', '11987654321', 'CLIENTE', MD5('Cliente123!')),
+('Ana Beatriz',        '22211133344', '1994-11-10', '11988776655', 'CLIENTE', MD5('Cliente123!')),
+('Fernando Rocha',     '99988877766', '1988-09-05', '11999887766', 'CLIENTE', MD5('Cliente123!')),
+('Julia Martins',      '44455566677', '1999-12-24', '11995544332', 'CLIENTE', MD5('Cliente123!')),
+('Ricardo Gomes',      '77722244455', '1981-07-14', '11991234567', 'CLIENTE', MD5('Cliente123!')),
+('Patricia Moura',     '88899911122', '1993-01-03', '11992233445', 'CLIENTE', MD5('Cliente123!')),
+('Eduardo Santos',     '55544433322', '1997-06-19', '11990011223', 'CLIENTE', MD5('Cliente123!')),
+('Gabriela Torres',    '11199988877', '2000-04-30', '11998877665', 'CLIENTE', MD5('Cliente123!')),
+('Thiago Cardoso',     '66611199955', '1991-10-15', '11994455667', 'CLIENTE', MD5('Cliente123!')),
+('Luana Ferreira',     '33388877755', '1986-02-08', '11993322110', 'CLIENTE', MD5('Cliente123!'));
+
+INSERT INTO endereco_usuario (id_usuario, cep, local, numero_casa, bairro, cidade, estado)
+SELECT id_usuario,
+       '01001000',
+       CONCAT('Rua Teste ', id_usuario),
+       id_usuario * 10,
+       'Centro',
+       'São Paulo',
+       'SP'
+FROM usuario
+WHERE tipo_usuario = 'CLIENTE' AND id_usuario > 1;
+
+INSERT INTO cliente (id_usuario, score_credito)
+SELECT id_usuario, ROUND(RAND()*80, 2)
+FROM usuario
+WHERE tipo_usuario = 'CLIENTE' AND id_usuario > 1;
+
+INSERT INTO conta (numero_conta, id_agencia, saldo, tipo_conta, id_cliente)
+SELECT NULL, 1, ROUND(RAND()*3000, 2), 'CORRENTE', id_cliente
+FROM cliente;
+
+INSERT INTO conta (numero_conta, id_agencia, saldo, tipo_conta, id_cliente)
+SELECT NULL, 1, ROUND(RAND()*5000, 2), 'POUPANCA', id_cliente
+FROM cliente;
+
+INSERT INTO transacao (id_conta_destino, tipo_transacao, valor, descricao)
+SELECT id_conta, 'RENDIMENTO', ROUND(saldo * 0.01, 2), 'Rendimento mensal'
+FROM conta
+WHERE tipo_conta = 'POUPANCA';
+
+CALL calcular_score_credito(1);
+CALL calcular_score_credito(2);
+CALL calcular_score_credito(3);
+CALL calcular_score_credito(4);
+CALL calcular_score_credito(5);
+CALL calcular_score_credito(6);
+CALL calcular_score_credito(7);
+CALL calcular_score_credito(8);
+CALL calcular_score_credito(9);
+CALL calcular_score_credito(10);
+
+INSERT INTO usuario (nome, cpf, data_nascimento, telefone, tipo_usuario, senha_hash)
+VALUES
+('Carlos Gerente',    '10101010101', '1980-08-10', '11981818181', 'FUNCIONARIO', MD5('Funcionario123!')),
+('Bruna Atendente',   '20202020202', '1992-04-11', '11982828282', 'FUNCIONARIO', MD5('Funcionario123!')),
+('Felipe Estagiario', '30303030303', '2001-07-12', '11983838383', 'FUNCIONARIO', MD5('Funcionario123!')),
+('Joana Analista',    '40404040404', '1995-01-05', '11984848484', 'FUNCIONARIO', MD5('Funcionario123!')),
+('Andre Supervisor',  '50505050505', '1987-09-20', '11985858585', 'FUNCIONARIO', MD5('Funcionario123!'));
+
+INSERT INTO relatorio (id_funcionario, tipo_relatorio, conteudo)
+SELECT id_funcionario,
+       'MOVIMENTACAO_DIARIA',
+       JSON_OBJECT('total_transacoes', FLOOR(RAND()*20))
+FROM funcionario
+LIMIT 10;
+
+select * from usuario;
+
+INSERT INTO agencia (id_agencia, nome, endereco)
+VALUES (145, 'Central', 2);
+
+select * from agencia;
+
+INSERT INTO agencia (id_agencia, nome, codigo_agencia, endereco_id)
+VALUES (145, 'Agência Central', 'AG145', 1);
+
+ALTER TABLE agencia
+ADD COLUMN endereco VARCHAR(255) NOT NULL;
+
+select * from agencia;
+
+INSERT INTO agencia values(12, 'Agencia Leste', 'RUA XAGRILAR' , 1);
 
 
 
